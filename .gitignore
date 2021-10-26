@@ -1,0 +1,14 @@
+# Binaries
+**/bin/
+bin-int/
+*.exe
+
+# HotReload log files
+*.log
+
+# Visual Studio files and folder
+.vs/
+**.sln
+**.vcxproj
+**.vcxproj.filters
+**.vcxproj.user
