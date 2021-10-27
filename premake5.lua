@@ -21,19 +21,21 @@ workspace "HotLoad"
         defines {"RELEASE"}
         -- Turn on dat optimization
         optimize "On"
+
+    filter "system:windows"
+        defines
+        {
+            "HL_BUILD_DLL"
+        }
     
--- HotLoad library
+-- HotLoad library with hot reload functions
 project "HotLoad"
     location "HotLoad"
-    kind "SharedLib"
-
-    targetdir ("bin/" .. outputdir .. "/%{prj.name}")
-    objdir ("bin-int/" .. outputdir .. "/%{prj.name}")
+    kind "None"
     
     files
     {
         "%{prj.name}/src/**.h",
-        "%{prj.name}/src/**.cpp",
     }
 
     includedirs
@@ -42,17 +44,50 @@ project "HotLoad"
     }
 
     filter "system:windows"
-        -- In windows, we need to specify what to export in DLLs
         defines
         {
             "HL_BUILD_DLL"
         }
 
-        -- Copy the .dll file to the Sandbox folder
-        postbuildcommands
-		{
-			("{COPY} %{cfg.buildtarget.relpath} ../bin/" .. outputdir .. "/Sandbox")
-		}
+-- HotLoadTest test library to be exported to DLL
+project "HotLoadTest"
+    location "HotLoadTest"
+    kind "SharedLib"
+
+    targetdir ("bin/" .. outputdir .. "/%{prj.name}")
+    objdir ("bin-int/" .. outputdir .. "/%{prj.name}")
+
+    files
+    {
+        "%{prj.name}/**.h",
+        "%{prj.name}/**.cpp",
+        "%{prj.name}/pub/**.h"
+    }
+
+    includedirs
+    {
+        "HotLoad/src"
+    }
+
+    filter "system:windows"
+        defines
+        {
+           "TESTLIB_BUILD_DLL"
+        }
+
+    prebuildcommands
+    {
+        -- This is needed otherwise we can't copy the new DLL when the old one is still in use
+        -- https://serverfault.com/a/503769
+        --("{DELETE} ../bin/" ..outputdir .. "/Sandbox/%{prj.name}_old.dll"), --First remove any old file
+        --("{MOVE} ../bin/" ..outputdir .. "/Sandbox/%{prj.name}.dll ../bin/" ..outputdir .. "/Sandbox/%{prj.name}_old.dll") -- Do the trick
+    }
+
+    -- Copy the .dll file to the Sandbox folder
+    postbuildcommands
+    {
+        ("{COPY} %{cfg.buildtarget.relpath} ../bin/" .. outputdir .. "/Sandbox")
+    }
 
 project "Sandbox"
     location "Sandbox"
@@ -69,38 +104,11 @@ project "Sandbox"
 
     links
     {
-        "HotLoad"
+        "HotLoadTest"
     }
 
     includedirs
     {
-        "Hotload/src"
-    }
-
-project "HotLoadTest"
-    location "HotLoadTest"
-    kind "SharedLib"
-
-    targetdir ("bin/" .. outputdir .. "/%{prj.name}")
-    objdir ("bin-int/" .. outputdir .. "/%{prj.name}")
-
-    files
-    {
-        "%{prj.name}/**.h",
-        "%{prj.name}/**.cpp",
-        "%{prj.name}/pub/**.h"
-    }
-
-    prebuildcommands
-    {
-        -- This is needed otherwise we can't copy the new DLL when the old one is still in use
-        -- https://serverfault.com/a/503769
-        ("{DELETE} ../bin/" ..outputdir .. "/Sandbox/%{prj.name}_old.dll"), --First remove any old file
-        ("{MOVE} ../bin/" ..outputdir .. "/Sandbox/%{prj.name}.dll ../bin/" ..outputdir .. "/Sandbox/%{prj.name}_old.dll") -- Do the trick
-    }
-
-    -- Copy the .dll file to the Sandbox folder
-    postbuildcommands
-    {
-        ("{COPY} %{cfg.buildtarget.relpath} ../bin/" .. outputdir .. "/Sandbox")
+        "HotLoadTest",
+        "HotLoad/src"
     }
